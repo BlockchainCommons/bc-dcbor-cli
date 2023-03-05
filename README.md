@@ -15,6 +15,11 @@
   * Hexadecimal (compact or annotated).
   * Binary
 
+## Related Projects
+
+* [dCBOR Library for Rust](https://github.com/BlockchainCommons/bc-dcbor-rust)
+* [dCBOR Library for Swift](https://github.com/BlockchainCommons/BCSwiftDCBOR)
+
 ## Installation
 
 Use the standard Rust toolchain to build, test, and install `dcbor`:
