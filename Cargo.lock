@@ -110,6 +110,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "cxx"
 version = "1.0.90"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -155,20 +161,21 @@ dependencies = [
 
 [[package]]
 name = "dcbor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
- "dcbor 0.1.1",
+ "dcbor 0.4.0",
  "indoc",
 ]
 
 [[package]]
 name = "dcbor"
-version = "0.1.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1ec4b93a6798f686976167806a9fa5984b3d9037be0c097033de3427b1582b2"
+checksum = "5488cc2c8a6e35b5e2c2fa9b32b6e735ea4b80ad8e77656982113901bd9b5f38"
 dependencies = [
  "chrono",
+ "half",
 ]
 
 [[package]]
@@ -190,6 +197,15 @@ checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "half"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02b4af3693f1b705df946e9fe5631932443781d0aabb423b62fcd4d73f6d2fd0"
+dependencies = [
+ "crunchy",
 ]
 
 [[package]]
