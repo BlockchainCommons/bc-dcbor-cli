@@ -1,7 +1,7 @@
 use std::{io::{self, Read, Write, BufRead, BufReader}, ffi::OsString, error::Error};
 
 use clap::{Parser, ValueEnum};
-use dcbor::{CBOR, CBOREncodable, KnownTagsDict, Tag};
+use dcbor::prelude::*;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -62,8 +62,8 @@ where
     R: Read,
     W: Write
 {
-    let mut known_tags = KnownTagsDict::new();
-    known_tags.insert(&Tag::new_opt(1, Some("date")));
+    let mut known_tags = TagsStore::new([]);
+    known_tags.insert(Tag::new_with_name(1, "date"));
 
     let cli = Cli::parse_from(args);
 
@@ -85,16 +85,16 @@ where
     match cli.out {
         OutputFormat::Diag => {
             if cli.compact {
-                writer.write(format!("{}\n", cbor).as_bytes())?;
+                writer.write_all(format!("{}\n", cbor).as_bytes())?;
             } else {
-                writer.write(format!("{}\n", cbor.diagnostic_opt(true, Some(&known_tags))).as_bytes())?;
+                writer.write_all(format!("{}\n", cbor.diagnostic_opt(true, Some(&known_tags))).as_bytes())?;
             }
         },
         OutputFormat::Hex => {
-            writer.write(format!("{}\n", cbor.hex_opt(!cli.compact, Some(&known_tags))).as_bytes())?;
+            writer.write_all(format!("{}\n", cbor.hex_opt(!cli.compact, Some(&known_tags))).as_bytes())?;
         },
         OutputFormat::Bin => {
-            writer.write(&cbor.cbor_data())?;
+            writer.write_all(&cbor.cbor_data())?;
         },
         OutputFormat::None => {},
     };
@@ -137,7 +137,7 @@ mod test {
               1:
               h'59f2293a5bce7d4de59e71b4207ac5d2',
               2:
-              1(2021-02-24T00:00:00Z)   ; date,
+              1(2021-02-24T00:00:00Z),   / date /
               3:
               "Dark Purple Aqua Love",
               4:

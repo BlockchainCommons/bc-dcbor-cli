@@ -1,6 +1,6 @@
 [package]
-name = "dcbor"
-version = "0.2.0"
+name = "dcbor-cli"
+version = "0.3.0"
 edition = "2021"
 license-file = "LICENSE.md"
 description = "Command line parser/validator for deterministic CBOR (\"dCBOR\")."
@@ -10,10 +10,14 @@ repository = "https://github.com/BlockchainCommons/bc-dcbor-cli"
 readme = "README.md"
 categories = ["data-structures", "encoding"]
 
+[[bin]]
+name = "dcbor"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dcbor = "0.4.0"
+dcbor = "0.11.0"
 clap = { version = "4.0.0", features = ["derive"] }
 
 [dev-dependencies]
