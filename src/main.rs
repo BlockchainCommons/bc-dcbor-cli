@@ -1,3 +1,5 @@
+//! A command line tool for parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
+
 use std::{io::{self, Read, Write, BufRead, BufReader}, ffi::OsString, error::Error};
 
 use clap::{Parser, ValueEnum};
@@ -5,6 +7,7 @@ use dcbor::prelude::*;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
+#[doc(hidden)]
 struct Cli {
     /// Input dCBOR as hexadecimal. If not provided here or input format is binary, input is read from STDIN
     hex: Option<String>,
@@ -23,6 +26,7 @@ struct Cli {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[doc(hidden)]
 enum InputFormat {
     /// Hexadecimal
     Hex,
@@ -31,6 +35,7 @@ enum InputFormat {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[doc(hidden)]
 enum OutputFormat {
     /// CBOR diagnostic notation
     Diag,
@@ -42,12 +47,14 @@ enum OutputFormat {
     None,
 }
 
+#[doc(hidden)]
 fn read_data<R>(reader: &mut R) -> Result<Vec<u8>, io::Error> where R: Read {
     let mut buf = vec!();
     reader.read_to_end(&mut buf)?;
     Ok(buf)
 }
 
+#[doc(hidden)]
 fn read_string<R>(reader: &mut R) -> Result<String, io::Error> where R: Read {
     let mut reader = BufReader::new(reader);
     let mut result = String::new();
@@ -55,6 +62,7 @@ fn read_string<R>(reader: &mut R) -> Result<String, io::Error> where R: Read {
     Ok(result)
 }
 
+#[doc(hidden)]
 fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<(), Box<dyn Error>>
 where
     I: IntoIterator<Item = T>,
@@ -102,6 +110,7 @@ where
     Ok(())
 }
 
+#[doc(hidden)]
 fn main() -> Result<(), Box<dyn Error>> {
     run(std::env::args_os(), &mut io::stdin(), &mut io::stdout())
 }

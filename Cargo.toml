@@ -2,10 +2,10 @@
 name = "dcbor-cli"
 version = "0.3.0"
 edition = "2021"
-license-file = "LICENSE.md"
 description = "Command line parser/validator for deterministic CBOR (\"dCBOR\")."
-author = "Blockchain Commons"
+authors = ["Blockchain Commons"]
 keywords = ["encoding", "cbor", "binary", "format", "serialization"]
+license = "BSD-2-Clause-Patent"
 repository = "https://github.com/BlockchainCommons/bc-dcbor-cli"
 readme = "README.md"
 categories = ["data-structures", "encoding"]
