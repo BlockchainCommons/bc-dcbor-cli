@@ -23,15 +23,16 @@
 
 ## Installation
 
-Use the standard Rust toolchain to build, test, and install `dcbor`:
+To install from crates.io, run:
 
+```bash
+cargo install dcbor-cli
 ```
-$ git clone https://github.com/BlockchainCommons/dcbor-cli.git
-$ cd dcbor-cli
-$ cargo install --path .
 
-$ dcbor --version
-dcbor 0.1.0
+To install from source, clone this repo, change to its root directory and run:
+
+```bash
+cargo install --path .
 ```
 
 ## Command Line Syntax
@@ -88,17 +89,17 @@ $ dcbor 6548656C6C6F
 ```
 
 ```
-$ CBOR_HEX=d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
+$ CBOR_HEX=d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
 ```
 
 ```
 $ dcbor $CBOR_HEX
-300(
+40300(
    {
       1:
       h'59f2293a5bce7d4de59e71b4207ac5d2',
       2:
-      1(2021-02-24T00:00:00Z)   ; date,
+      1(2021-02-24T00:00:00Z),   / date /
       3:
       "Dark Purple Aqua Love",
       4:
@@ -107,20 +108,20 @@ $ dcbor $CBOR_HEX
 )
 
 $ dcbor --compact $CBOR_HEX
-300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})
+40300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})
 ```
 
 ### Validate dCBOR and print it out as annotated hexadecimal
 
 ```
 $ dcbor --out hex $CBOR_HEX
-d9 012c                                  # tag(300)
+d9 9d6c                                  # tag(40300)
    a4                                    # map(4)
       01                                 # unsigned(1)
       50                                 # bytes(16)
          59f2293a5bce7d4de59e71b4207ac5d2
       02                                 # unsigned(2)
-      c1                                 # tag(1)   ; date
+      c1                                 # tag(1) date
          1a60359700                      # unsigned(1614124800)
       03                                 # unsigned(3)
       75                                 # text(21)
@@ -138,7 +139,7 @@ $ dcbor --out bin $CBOR_HEX >test.bin
 
 # Read it back in from the same file.
 $ dcbor --in bin --out hex --compact <test.bin
-d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
+d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
 ```
 
 ## Status - Alpha
