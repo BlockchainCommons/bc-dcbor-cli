@@ -1,9 +1,10 @@
 //! A command line tool for parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
 
-use std::{io::{self, Read, Write, BufRead, BufReader}, ffi::OsString, error::Error};
+use std::{io::{self, Read, Write, BufRead, BufReader}, ffi::OsString};
 
 use clap::{Parser, ValueEnum};
 use dcbor::prelude::*;
+use anyhow::Result;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -48,14 +49,14 @@ enum OutputFormat {
 }
 
 #[doc(hidden)]
-fn read_data<R>(reader: &mut R) -> Result<Vec<u8>, io::Error> where R: Read {
+fn read_data<R>(reader: &mut R) -> Result<Vec<u8>> where R: Read {
     let mut buf = vec!();
     reader.read_to_end(&mut buf)?;
     Ok(buf)
 }
 
 #[doc(hidden)]
-fn read_string<R>(reader: &mut R) -> Result<String, io::Error> where R: Read {
+fn read_string<R>(reader: &mut R) -> Result<String> where R: Read {
     let mut reader = BufReader::new(reader);
     let mut result = String::new();
     reader.read_line(&mut result)?;
@@ -63,7 +64,7 @@ fn read_string<R>(reader: &mut R) -> Result<String, io::Error> where R: Read {
 }
 
 #[doc(hidden)]
-fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<(), Box<dyn Error>>
+fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
@@ -77,16 +78,16 @@ where
 
     let cbor: CBOR = match (cli.r#in, cli.hex) {
         (InputFormat::Hex, Some(hex)) => {
-            CBOR::from_hex(&hex)?
+            CBOR::try_from_hex(&hex)?
         },
         (InputFormat::Hex, None) => {
             let string = read_string(reader)?;
             let hex = string.trim();
-            CBOR::from_hex(hex)?
+            CBOR::try_from_hex(hex)?
         },
         (InputFormat::Bin, _) => {
             let data = read_data(reader)?;
-            CBOR::from_data(&data)?
+            CBOR::try_from_data(data)?
         },
     };
 
@@ -102,7 +103,7 @@ where
             writer.write_all(format!("{}\n", cbor.hex_opt(!cli.compact, Some(&known_tags))).as_bytes())?;
         },
         OutputFormat::Bin => {
-            writer.write_all(&cbor.cbor_data())?;
+            writer.write_all(&cbor.to_cbor_data())?;
         },
         OutputFormat::None => {},
     };
@@ -111,7 +112,7 @@ where
 }
 
 #[doc(hidden)]
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     run(std::env::args_os(), &mut io::stdin(), &mut io::stdout())
 }
 
