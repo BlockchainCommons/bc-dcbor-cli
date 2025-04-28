@@ -141,19 +141,20 @@ mod test {
     fn test1() {
         test_hex_diag("00", "0");
         let hex = "d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
+        #[rustfmt::skip]
         let expected = indoc! {r#"
-        300(
-            {
-                1:
-                h'59f2293a5bce7d4de59e71b4207ac5d2',
-                2:
-                1(1614124800),   / date /
-                3:
-                "Dark Purple Aqua Love",
-                4:
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-            }
-        )
+            300(
+                {
+                    1:
+                    h'59f2293a5bce7d4de59e71b4207ac5d2',
+                    2:
+                    1(1614124800),   / date /
+                    3:
+                    "Dark Purple Aqua Love",
+                    4:
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+                }
+            )
         "#}.trim();
         test_hex_diag(hex, expected);
     }
