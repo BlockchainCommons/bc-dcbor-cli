@@ -5,7 +5,7 @@ use std::{ io::{ self, Read, Write, BufRead, BufReader }, ffi::OsString };
 use clap::{ Parser, Subcommand, Args, ValueEnum };
 use dcbor::prelude::*;
 use anyhow::Result;
-use dcbor_parse::{compose_dcbor_array, compose_dcbor_map, parse_dcbor_item};
+use dcbor_parse::{ compose_dcbor_array, compose_dcbor_map, parse_dcbor_item };
 
 #[derive(Args)]
 struct SharedOpts {
@@ -110,15 +110,25 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
 
     let cli = Cli::parse_from(args);
     let opts = cli.opts;
+    // use subcommand-specific shared options if provided, otherwise global ones
+    let mut shared_opts = opts.shared;
 
     let cbor: CBOR = if let Some(cmd) = cli.command {
         match cmd {
-            Commands::Array { elements, .. } => {
-                let element_refs: Vec<&str> = elements.iter().map(|s| s.as_str()).collect();
+            Commands::Array { elements, shared } => {
+                shared_opts = shared;
+                let element_refs: Vec<&str> = elements
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect();
                 compose_dcbor_array(&element_refs)?
             }
-            Commands::Map { kv_pairs, .. } => {
-                let kv_refs: Vec<&str> = kv_pairs.iter().map(|s| s.as_str()).collect();
+            Commands::Map { kv_pairs, shared } => {
+                shared_opts = shared;
+                let kv_refs: Vec<&str> = kv_pairs
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect();
                 compose_dcbor_map(&kv_refs)?
             }
         }
@@ -148,9 +158,10 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
         }
     };
 
-    match opts.shared.out {
+    // format output using the effective shared options
+    match shared_opts.out {
         OutputFormat::Diag => {
-            if opts.shared.annotate {
+            if shared_opts.annotate {
                 with_tags!(|tags: &dyn TagsStoreTrait| {
                     writer.write_all(
                         format!(
@@ -164,7 +175,7 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
             }
         }
         OutputFormat::Hex => {
-            if opts.shared.annotate {
+            if shared_opts.annotate {
                 writer.write_all(format!("{}\n", cbor.hex_annotated()).as_bytes())?;
             } else {
                 writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
