@@ -5,7 +5,7 @@ use std::{ io::{ self, Read, Write, BufRead, BufReader }, ffi::OsString };
 use clap::{ Parser, Subcommand, Args, ValueEnum };
 use dcbor::prelude::*;
 use anyhow::Result;
-use dcbor_parse::parse_dcbor_item;
+use dcbor_parse::{compose_dcbor_array, compose_dcbor_map, parse_dcbor_item};
 
 #[derive(Args)]
 struct SharedOpts {
@@ -20,19 +20,19 @@ struct SharedOpts {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Echo the provided arguments as an array
+    /// Compose a dCBOR array from the provided elements
     Array {
-        /// Items to echo
-        #[arg(value_name = "ITEMS")]
-        items: Vec<String>,
+        /// Each of the elements is parsed as a dCBOR item in diagnostic notation
+        /// and added to the output dCBOR array.
+        elements: Vec<String>,
         #[command(flatten)]
         shared: SharedOpts,
     },
-    /// Echo the provided arguments as a map
+    /// Compose a dCBOR map from the provided keys and values
     Map {
-        /// Items to echo
-        #[arg(value_name = "ITEMS")]
-        items: Vec<String>,
+        /// Each of the alternating keys and values is parsed as a dCBOR item in diagnostic notation
+        /// and added to the output dCBOR map.
+        kv_pairs: Vec<String>,
         #[command(flatten)]
         shared: SharedOpts,
     },
@@ -109,42 +109,42 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
     bc_components::register_tags();
 
     let cli = Cli::parse_from(args);
-
-    if let Some(cmd) = cli.command {
-        match cmd {
-            Commands::Array { items, .. } => {
-                let line = items.join(" ");
-                writer.write_all(line.as_bytes())?;
-                writer.write_all(b"\n")?;
-                return Ok(());
-            }
-            Commands::Map { items, .. } => {
-                let line = items.join(" ");
-                writer.write_all(line.as_bytes())?;
-                writer.write_all(b"\n")?;
-                return Ok(());
-            }
-        }
-    }
     let opts = cli.opts;
 
-    let cbor: CBOR = match (opts.r#in, opts.input) {
-        (InputFormat::Diag, Some(diag)) => {
-            parse_dcbor_item(&diag).map_err(|e| { anyhow::anyhow!("{}", e.full_message(&diag)) })?
+    let cbor: CBOR = if let Some(cmd) = cli.command {
+        match cmd {
+            Commands::Array { elements, .. } => {
+                let element_refs: Vec<&str> = elements.iter().map(|s| s.as_str()).collect();
+                compose_dcbor_array(&element_refs)?
+            }
+            Commands::Map { kv_pairs, .. } => {
+                let kv_refs: Vec<&str> = kv_pairs.iter().map(|s| s.as_str()).collect();
+                compose_dcbor_map(&kv_refs)?
+            }
         }
-        (InputFormat::Diag, None) => {
-            let diag = read_string(reader)?;
-            parse_dcbor_item(&diag).map_err(|e| { anyhow::anyhow!("{}", e.full_message(&diag)) })?
-        }
-        (InputFormat::Hex, Some(hex)) => { CBOR::try_from_hex(&hex)? }
-        (InputFormat::Hex, None) => {
-            let string = read_string(reader)?;
-            let hex = string.trim();
-            CBOR::try_from_hex(hex)?
-        }
-        (InputFormat::Bin, _) => {
-            let data = read_data(reader)?;
-            CBOR::try_from_data(data)?
+    } else {
+        match (opts.r#in, opts.input) {
+            (InputFormat::Diag, Some(diag)) => {
+                parse_dcbor_item(&diag).map_err(|e| {
+                    anyhow::anyhow!("{}", e.full_message(&diag))
+                })?
+            }
+            (InputFormat::Diag, None) => {
+                let diag = read_string(reader)?;
+                parse_dcbor_item(&diag).map_err(|e| {
+                    anyhow::anyhow!("{}", e.full_message(&diag))
+                })?
+            }
+            (InputFormat::Hex, Some(hex)) => { CBOR::try_from_hex(&hex)? }
+            (InputFormat::Hex, None) => {
+                let string = read_string(reader)?;
+                let hex = string.trim();
+                CBOR::try_from_hex(hex)?
+            }
+            (InputFormat::Bin, _) => {
+                let data = read_data(reader)?;
+                CBOR::try_from_data(data)?
+            }
         }
     };
 
