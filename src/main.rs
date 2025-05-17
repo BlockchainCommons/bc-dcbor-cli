@@ -7,6 +7,17 @@ use dcbor::prelude::*;
 use anyhow::Result;
 use dcbor_parse::parse_dcbor_item;
 
+#[derive(Args)]
+struct SharedOpts {
+    /// The output format
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Hex)]
+    out: OutputFormat,
+
+    /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
+    #[arg(short, long, default_value_t = false)]
+    annotate: bool,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Echo the provided arguments as an array
@@ -14,12 +25,16 @@ enum Commands {
         /// Items to echo
         #[arg(value_name = "ITEMS")]
         items: Vec<String>,
+        #[command(flatten)]
+        shared: SharedOpts,
     },
     /// Echo the provided arguments as a map
     Map {
         /// Items to echo
         #[arg(value_name = "ITEMS")]
         items: Vec<String>,
+        #[command(flatten)]
+        shared: SharedOpts,
     },
 }
 
@@ -32,13 +47,8 @@ struct DefaultOpts {
     #[arg(short, long, value_enum, default_value_t = InputFormat::Diag)]
     r#in: InputFormat,
 
-    /// The output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Hex)]
-    out: OutputFormat,
-
-    /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
-    #[arg(short, long, default_value_t = false)]
-    annotate: bool,
+    #[command(flatten)]
+    shared: SharedOpts,
 }
 
 #[derive(Parser)]
@@ -102,13 +112,13 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
 
     if let Some(cmd) = cli.command {
         match cmd {
-            Commands::Array { items } => {
+            Commands::Array { items, .. } => {
                 let line = items.join(" ");
                 writer.write_all(line.as_bytes())?;
                 writer.write_all(b"\n")?;
                 return Ok(());
             }
-            Commands::Map { items } => {
+            Commands::Map { items, .. } => {
                 let line = items.join(" ");
                 writer.write_all(line.as_bytes())?;
                 writer.write_all(b"\n")?;
@@ -138,9 +148,9 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
         }
     };
 
-    match opts.out {
+    match opts.shared.out {
         OutputFormat::Diag => {
-            if opts.annotate {
+            if opts.shared.annotate {
                 with_tags!(|tags: &dyn TagsStoreTrait| {
                     writer.write_all(
                         format!(
@@ -154,7 +164,7 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
             }
         }
         OutputFormat::Hex => {
-            if opts.annotate {
+            if opts.shared.annotate {
                 writer.write_all(format!("{}\n", cbor.hex_annotated()).as_bytes())?;
             } else {
                 writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
