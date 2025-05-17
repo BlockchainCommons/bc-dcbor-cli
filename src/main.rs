@@ -204,7 +204,9 @@ mod test {
     fn run_expect(options: &[&str], input: &str, expect: &str) {
         let mut all_args = vec!["dcbor"];
         all_args.extend(options.iter());
-        all_args.push(input);
+        if !input.is_empty() {
+            all_args.push(input);
+        }
         let mut output: Vec<u8> = Vec::new();
         let input: Vec<u8> = Vec::new();
         let mut input_cursor = Cursor::new(input);
@@ -219,7 +221,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn test1() {
+    fn test_parse() {
         let diag_to_hex: &[&str] = &["--"]; // Signal end of options so `-Infinity` below is not treated as an option
         let hex_to_diag: &[&str] = &["--in", "hex", "--out", "diag"];
         let hex_to_diag_annotate: &[&str] = &["--in", "hex", "--out", "diag", "--annotate"];
@@ -390,5 +392,17 @@ mod test {
             seed_diag,
             seed_hex_annotate
         );
+    }
+
+    #[test]
+    fn test_compose_array() {
+        let expected = r#"[1, 2, 3]"#;
+        run_expect(&["array", "--out", "diag", "1", "2", "3"], "", expected);
+    }
+
+    #[test]
+    fn test_compose_map() {
+        let expected = r#"{1: 2, 3: 4}"#;
+        run_expect(&["map", "--out", "diag", "1", "2", "3", "4"], "", expected);
     }
 }
