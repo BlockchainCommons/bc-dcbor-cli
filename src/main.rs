@@ -14,7 +14,7 @@ struct SharedOpts {
     out: OutputFormat,
 
     /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long)]
     annotate: bool,
 }
 
@@ -165,7 +165,7 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
                     writer.write_all(
                         format!(
                             "{}\n",
-                            cbor.diagnostic_opt(true, true, false, Some(tags))
+                            cbor.diagnostic_opt(true, false, false, Some(tags))
                         ).as_bytes()
                     )
                 })?;
@@ -346,17 +346,17 @@ mod test {
             Some("40000(1)")
         );
 
-        let seed_hex = "d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
-        let seed_diag = r#"300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})"#;
+        let seed_hex = "d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
+        let seed_diag = r#"40300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})"#;
         round_trip_diag_hex(seed_diag, seed_hex, None);
 
         let seed_diag_annotate = indoc! {r#"
-            300(   / crypto-seed /
+            40300(   / seed /
                 {
                     1:
                     h'59f2293a5bce7d4de59e71b4207ac5d2',
                     2:
-                    2021-02-24,
+                    1(1614124800),   / date /
                     3:
                     "Dark Purple Aqua Love",
                     4:
@@ -371,7 +371,7 @@ mod test {
         );
 
         let seed_hex_annotate = indoc! {r#"
-            d9 012c                                 # tag(300) crypto-seed
+            d9 9d6c                                 # tag(40300) seed
                 a4                                  # map(4)
                     01                              # unsigned(1)
                     50                              # bytes(16)

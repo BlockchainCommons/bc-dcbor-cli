@@ -89,9 +89,20 @@ Options:
 
 ### Convert CBOR diagnostic notation to hexadecimal
 
+> **NOTE:** The default input format is `diag` and the default output format is `hex`. This is not the same as previous versions of `dcbor`. This change was made to facilitate the use of `dcbor` as a compositional tool for dCBOR in scripts.
+
+This example shows how to convert a simple CBOR diagnostic notation input (a number) to its serialized hexadecimal form:
+
 ```
 $ dcbor '42'
 182a
+```
+
+Floating point numbers work the same way:
+
+```
+$ dcbor '3.14'
+fb40091eb851eb851f
 ```
 
 In diagnostic notation, text strings must be enclosed in double quotes, so you must do so on the command line, which requires escaping the double quotes:
@@ -101,15 +112,13 @@ $ dcbor '"Hello"'
 6548656c6c6f
 ```
 
-To avoid escaping no matter the complexity of the input, you can use a "here document" (a.k.a. "heredoc"):
+To avoid escaping no matter the complexity of the input, you can use a "here document" (a.k.a. "heredoc"). This example is the same as the previous one, but it uses a heredoc to avoid escaping the double quotes:
 
 ```
 $ dcbor <<EOF
-{
-  "Hello": "World"
-}
+"Hello"
 EOF
-a16548656c6c6f65576f726c64
+6548656c6c6f
 ```
 
 ### Validate dCBOR and print it out as annotated CBOR diagnostic notation
@@ -125,21 +134,28 @@ Annotated diagnostic notation may include comments or other summarizations that 
 $ CBOR_HEX=d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
 
 $ dcbor --in hex --out diag --annotate $CBOR_HEX
-40300(
-   {
-      1:
-      h'59f2293a5bce7d4de59e71b4207ac5d2',
-      2:
-      1(2021-02-24T00:00:00Z),   / date /
-      3:
-      "Dark Purple Aqua Love",
-      4:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-   }
+40300(   / seed /
+    {
+        1:
+        h'59f2293a5bce7d4de59e71b4207ac5d2',
+        2:
+        1(1614124800),   / date /
+        3:
+        "Dark Purple Aqua Love",
+        4:
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    }
 )
+```
 
-$ dcbor --compact $CBOR_HEX
+The non-annotated version does not include commands and should round-trip to the original input:
+```
+$ CBOR_DIAG=`dcbor --in hex --out diag $CBOR_HEX`
+$ echo $CBOR_DIAG
 40300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})
+$ CBOR_HEX_2=`dcbor $CBOR_DIAG`
+$ [ "$CBOR_HEX" = "$CBOR_HEX_2" ] && echo "successful" || echo "unsuccessful"
+successful
 ```
 
 ### Validate dCBOR and print it out as annotated hexadecimal
