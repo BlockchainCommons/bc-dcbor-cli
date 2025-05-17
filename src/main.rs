@@ -158,7 +158,7 @@ mod test {
         let diag_to_hex: &[&str] = &["--"]; // Signal end of options so `-Infinity` below is not treated as an option
         let hex_to_diag: &[&str] = &["--in", "hex", "--out", "diag"];
         let hex_to_diag_annotate: &[&str] = &["--in", "hex", "--out", "diag", "--annotate"];
-        let diag_to_diag_annotate: &[&str] = &["--out", "diag", "--annotate"];
+        let diag_to_hex_annotate: &[&str] = &["--out", "hex", "--annotate"];
 
         let round_trip_diag_hex = |diag: &str, hex: &str, ret_diag: Option<&str>| {
             run_expect(diag_to_hex, diag, hex);
@@ -249,12 +249,42 @@ mod test {
             "a3646b657931420102646b6579326676616c756532646b657933a3016676616c756531026676616c756532036676616c756533",
             None
         );
+        round_trip_diag_hex(
+            r#"ur:date/cyisdadmlasgtapttl"#,
+            "c11a68252e80",
+            Some("1(1747267200)")
+        );
+        round_trip_diag_hex(
+            r#"date(1747267200)"#,
+            "c11a68252e80",
+            Some("1(1747267200)")
+        );
+        round_trip_diag_hex(
+            r#"40000(0)"#,
+            "d99c4000",
+            None
+        );
+        round_trip_diag_hex(
+            r#"'0'"#,
+            "d99c4000",
+            Some("40000(0)")
+        );
+        round_trip_diag_hex(
+            r#"''"#,
+            "d99c4000",
+            Some("40000(0)")
+        );
+        round_trip_diag_hex(
+            r#"'isA'"#,
+            "d99c4001",
+            Some("40000(1)")
+        );
 
         let seed_hex = "d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
         let seed_diag = r#"300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})"#;
         round_trip_diag_hex(seed_diag, seed_hex, None);
 
-        let seed_diag_annotate = (indoc! {r#"
+        let seed_diag_annotate = indoc! {r#"
             300(   / crypto-seed /
                 {
                     1:
@@ -267,17 +297,33 @@ mod test {
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                 }
             )
-        "#}).trim();
+        "#}.trim();
         run_expect(
             hex_to_diag_annotate,
             seed_hex,
             seed_diag_annotate
         );
 
+        let seed_hex_annotate = indoc! {r#"
+            d9 012c                                 # tag(300) crypto-seed
+                a4                                  # map(4)
+                    01                              # unsigned(1)
+                    50                              # bytes(16)
+                        59f2293a5bce7d4de59e71b4207ac5d2
+                    02                              # unsigned(2)
+                    c1                              # tag(1) date
+                        1a60359700                  # unsigned(1614124800)
+                    03                              # unsigned(3)
+                    75                              # text(21)
+                        4461726b20507572706c652041717561204c6f7665 # "Dark Purple Aqua Love"
+                    04                              # unsigned(4)
+                    78 7b                           # text(123)
+                        4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e # "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+        "#}.trim();
         run_expect(
-            diag_to_diag_annotate,
-            "''",
-            "40000(0)   / known-value /"
+            diag_to_hex_annotate,
+            seed_diag,
+            seed_hex_annotate
         );
     }
 }
