@@ -1,34 +1,37 @@
 //! A command line tool for parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
 
-use std::{io::{self, Read, Write, BufRead, BufReader}, ffi::OsString};
+use std::{ io::{ self, Read, Write, BufRead, BufReader }, ffi::OsString };
 
-use clap::{Parser, ValueEnum};
+use clap::{ Parser, ValueEnum };
 use dcbor::prelude::*;
 use anyhow::Result;
+use dcbor_parse::parse_dcbor_item;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[doc(hidden)]
 struct Cli {
-    /// Input dCBOR as hexadecimal. If not provided here or input format is binary, input is read from STDIN
-    hex: Option<String>,
+    /// Input dCBOR in the format specified by `--in`. If not provided here or input format is binary, input is read from STDIN
+    input: Option<String>,
 
     /// The input format
-    #[arg(short, long, value_enum, default_value_t = InputFormat::Hex)]
+    #[arg(short, long, value_enum, default_value_t = InputFormat::Diag)]
     r#in: InputFormat,
 
     /// The output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Diag)]
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Hex)]
     out: OutputFormat,
 
-    /// Output diagnostic notation or hexadecimal in compact form. Ignored for other output formats
+    /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
     #[arg(short, long, default_value_t = false)]
-    compact: bool,
+    annotate: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[doc(hidden)]
 enum InputFormat {
+    /// CBOR diagnostic notation
+    Diag,
     /// Hexadecimal
     Hex,
     /// Raw binary
@@ -65,48 +68,59 @@ fn read_string<R>(reader: &mut R) -> Result<String> where R: Read {
 
 #[doc(hidden)]
 fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-    R: Read,
-    W: Write
+    where I: IntoIterator<Item = T>, T: Into<OsString> + Clone, R: Read, W: Write
 {
-    let mut known_tags = TagsStore::new([]);
-    known_tags.insert(Tag::new(1, "date"));
+    bc_components::register_tags();
 
     let cli = Cli::parse_from(args);
 
-    let cbor: CBOR = match (cli.r#in, cli.hex) {
-        (InputFormat::Hex, Some(hex)) => {
-            CBOR::try_from_hex(&hex)?
-        },
+    let cbor: CBOR = match (cli.r#in, cli.input) {
+        (InputFormat::Diag, Some(diag)) => {
+            parse_dcbor_item(&diag).map_err(|e| { anyhow::anyhow!("{}", e.full_message(&diag)) })?
+        }
+        (InputFormat::Diag, None) => {
+            let diag = read_string(reader)?;
+            parse_dcbor_item(&diag).map_err(|e| { anyhow::anyhow!("{}", e.full_message(&diag)) })?
+        }
+        (InputFormat::Hex, Some(hex)) => { CBOR::try_from_hex(&hex)? }
         (InputFormat::Hex, None) => {
             let string = read_string(reader)?;
             let hex = string.trim();
             CBOR::try_from_hex(hex)?
-        },
+        }
         (InputFormat::Bin, _) => {
             let data = read_data(reader)?;
             CBOR::try_from_data(data)?
-        },
+        }
     };
 
     match cli.out {
         OutputFormat::Diag => {
-            if cli.compact {
-                writer.write_all(format!("{}\n", cbor).as_bytes())?;
+            if cli.annotate {
+                with_tags!(|tags: &dyn TagsStoreTrait| {
+                    writer.write_all(
+                        format!(
+                            "{}\n",
+                            cbor.diagnostic_opt(true, true, false, Some(tags))
+                        ).as_bytes()
+                    )
+                })?;
             } else {
-                writer.write_all(format!("{}\n", cbor.diagnostic_opt(true, false, false, Some(&known_tags))).as_bytes())?;
+                writer.write_all(format!("{}\n", cbor.diagnostic_flat()).as_bytes())?;
             }
-        },
+        }
         OutputFormat::Hex => {
-            writer.write_all(format!("{}\n", cbor.hex_opt(!cli.compact, Some(&known_tags))).as_bytes())?;
-        },
+            if cli.annotate {
+                writer.write_all(format!("{}\n", cbor.hex_annotated()).as_bytes())?;
+            } else {
+                writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
+            }
+        }
         OutputFormat::Bin => {
             writer.write_all(&cbor.to_cbor_data())?;
-        },
-        OutputFormat::None => {},
-    };
+        }
+        OutputFormat::None => {}
+    }
 
     Ok(())
 }
@@ -122,40 +136,148 @@ mod test {
     use crate::run;
     use indoc::indoc;
 
-    fn test_diag(args: &[&str], diag: &str) {
+    fn run_expect(options: &[&str], input: &str, expect: &str) {
         let mut all_args = vec!["dcbor"];
-        all_args.extend(args.iter());
+        all_args.extend(options.iter());
+        all_args.push(input);
         let mut output: Vec<u8> = Vec::new();
         let input: Vec<u8> = Vec::new();
         let mut input_cursor = Cursor::new(input);
         run(all_args, &mut input_cursor, &mut output).unwrap();
-        let output_string = String::from_utf8(output).unwrap();
-        assert_eq!(diag, output_string.trim())
-    }
-
-    fn test_hex_diag(hex: &str, diag: &str) {
-        test_diag(&[hex], diag)
+        let raw_output_string = String::from_utf8(output).unwrap();
+        let output_string = raw_output_string.trim();
+        if expect != output_string {
+            println!("=== Expected ===\n{}\n\n=== Got ===\n{}", expect, output_string);
+        }
+        assert_eq!(expect, output_string);
     }
 
     #[test]
+    #[rustfmt::skip]
     fn test1() {
-        test_hex_diag("00", "0");
-        let hex = "d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
-        #[rustfmt::skip]
-        let expected = indoc! {r#"
-            300(
+        let diag_to_hex: &[&str] = &["--"]; // Signal end of options so `-Infinity` below is not treated as an option
+        let hex_to_diag: &[&str] = &["--in", "hex", "--out", "diag"];
+        let hex_to_diag_annotate: &[&str] = &["--in", "hex", "--out", "diag", "--annotate"];
+        let diag_to_diag_annotate: &[&str] = &["--out", "diag", "--annotate"];
+
+        let round_trip_diag_hex = |diag: &str, hex: &str, ret_diag: Option<&str>| {
+            run_expect(diag_to_hex, diag, hex);
+            run_expect(hex_to_diag, hex, ret_diag.unwrap_or(diag));
+        };
+        round_trip_diag_hex(
+            r#"0"#,
+            "00",
+            None
+        );
+        round_trip_diag_hex(
+            r#"42"#,
+            "182a",
+            None
+        );
+        round_trip_diag_hex(
+            r#"3.14"#,
+            "fb40091eb851eb851f",
+            None
+        );
+        round_trip_diag_hex(
+            r#"40000(0)"#,
+            "d99c4000",
+            None
+        );
+        round_trip_diag_hex(
+            r#"true"#,
+            "f5",
+            None
+        );
+        round_trip_diag_hex(
+            r#"false"#,
+            "f4",
+            None
+        );
+        round_trip_diag_hex(
+            r#"null"#,
+            "f6",
+            None
+        );
+        round_trip_diag_hex(
+            r#"Infinity"#,
+            "f97c00",
+            None
+        );
+        round_trip_diag_hex(
+            r#"-Infinity"#,
+            "f9fc00",
+            None
+        );
+        round_trip_diag_hex(
+            r#"NaN"#,
+            "f97e00",
+            None
+        );
+        round_trip_diag_hex(
+            r#""Hello, world!""#,
+            "6d48656c6c6f2c20776f726c6421",
+            None
+        );
+        round_trip_diag_hex(
+            r#"h'0102030405060708090a'"#,
+            "4a0102030405060708090a",
+            None
+        );
+        round_trip_diag_hex(
+            r#"b64'AQIDBAUGBwgJCg=='"#,
+            "4a0102030405060708090a",
+            Some("h'0102030405060708090a'")
+        );
+        round_trip_diag_hex(
+            r#"[1, 2, 3]"#,
+            "83010203",
+            None
+        );
+        round_trip_diag_hex(
+            r#"[true, false, null]"#,
+            "83f5f4f6",
+            None
+        );
+        round_trip_diag_hex(
+            r#"{1: "value1", 2: "value2", 3: "value3"}"#,
+            "a3016676616c756531026676616c756532036676616c756533",
+            None
+        );
+        round_trip_diag_hex(
+            r#"{"key1": h'0102', "key2": "value2", "key3": {1: "value1", 2: "value2", 3: "value3"}}"#,
+            "a3646b657931420102646b6579326676616c756532646b657933a3016676616c756531026676616c756532036676616c756533",
+            None
+        );
+
+        let seed_hex = "d9012ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e";
+        let seed_diag = r#"300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})"#;
+        round_trip_diag_hex(seed_diag, seed_hex, None);
+
+        let seed_diag_annotate = (indoc! {r#"
+            300(   / crypto-seed /
                 {
                     1:
                     h'59f2293a5bce7d4de59e71b4207ac5d2',
                     2:
-                    1(1614124800),   / date /
+                    2021-02-24,
                     3:
                     "Dark Purple Aqua Love",
                     4:
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                 }
             )
-        "#}.trim();
-        test_hex_diag(hex, expected);
+        "#}).trim();
+        run_expect(
+            hex_to_diag_annotate,
+            seed_hex,
+            seed_diag_annotate
+        );
+
+        run_expect(
+            diag_to_diag_annotate,
+            "''",
+            "40000(0)   / known-value /"
+        );
     }
 }
