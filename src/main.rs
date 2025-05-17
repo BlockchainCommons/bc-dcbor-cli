@@ -2,15 +2,29 @@
 
 use std::{ io::{ self, Read, Write, BufRead, BufReader }, ffi::OsString };
 
-use clap::{ Parser, ValueEnum };
+use clap::{ Parser, Subcommand, Args, ValueEnum };
 use dcbor::prelude::*;
 use anyhow::Result;
 use dcbor_parse::parse_dcbor_item;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[doc(hidden)]
-struct Cli {
+#[derive(Subcommand)]
+enum Commands {
+    /// Echo the provided arguments as an array
+    Array {
+        /// Items to echo
+        #[arg(value_name = "ITEMS")]
+        items: Vec<String>,
+    },
+    /// Echo the provided arguments as a map
+    Map {
+        /// Items to echo
+        #[arg(value_name = "ITEMS")]
+        items: Vec<String>,
+    },
+}
+
+#[derive(Args)]
+struct DefaultOpts {
     /// Input dCBOR in the format specified by `--in`. If not provided here or input format is binary, input is read from STDIN
     input: Option<String>,
 
@@ -25,6 +39,18 @@ struct Cli {
     /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
     #[arg(short, long, default_value_t = false)]
     annotate: bool,
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[doc(hidden)]
+struct Cli {
+    /// Subcommands for custom operations
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    #[command(flatten)]
+    opts: DefaultOpts,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -74,7 +100,25 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
 
     let cli = Cli::parse_from(args);
 
-    let cbor: CBOR = match (cli.r#in, cli.input) {
+    if let Some(cmd) = cli.command {
+        match cmd {
+            Commands::Array { items } => {
+                let line = items.join(" ");
+                writer.write_all(line.as_bytes())?;
+                writer.write_all(b"\n")?;
+                return Ok(());
+            }
+            Commands::Map { items } => {
+                let line = items.join(" ");
+                writer.write_all(line.as_bytes())?;
+                writer.write_all(b"\n")?;
+                return Ok(());
+            }
+        }
+    }
+    let opts = cli.opts;
+
+    let cbor: CBOR = match (opts.r#in, opts.input) {
         (InputFormat::Diag, Some(diag)) => {
             parse_dcbor_item(&diag).map_err(|e| { anyhow::anyhow!("{}", e.full_message(&diag)) })?
         }
@@ -94,9 +138,9 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
         }
     };
 
-    match cli.out {
+    match opts.out {
         OutputFormat::Diag => {
-            if cli.annotate {
+            if opts.annotate {
                 with_tags!(|tags: &dyn TagsStoreTrait| {
                     writer.write_all(
                         format!(
@@ -110,7 +154,7 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
             }
         }
         OutputFormat::Hex => {
-            if cli.annotate {
+            if opts.annotate {
                 writer.write_all(format!("{}\n", cbor.hex_annotated()).as_bytes())?;
             } else {
                 writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
