@@ -42,24 +42,20 @@ This is the command line syntax as output by typing `dcbor --help`:
 ```
 Command line parser/validator for deterministic CBOR ("dCBOR").
 
-Usage: dcbor [OPTIONS] [HEX]
+Usage: dcbor [OPTIONS] [INPUT] [COMMAND]
+
+Commands:
+  array  Compose a dCBOR array from the provided elements
+  map    Compose a dCBOR map from the provided keys and values
+  help   Print this message or the help of the given subcommand(s)
 
 Arguments:
-  [HEX]
-          Input dCBOR as hexadecimal. If not provided here or input format is binary, input is read from STDIN
+  [INPUT]
+          Input dCBOR in the format specified by `--in`. If not provided here or input format is binary, input is read from STDIN
 
 Options:
   -i, --in <IN>
           The input format
-
-          [default: hex]
-
-          Possible values:
-          - hex: Hexadecimal
-          - bin: Raw binary
-
-  -o, --out <OUT>
-          The output format
 
           [default: diag]
 
@@ -67,10 +63,20 @@ Options:
           - diag: CBOR diagnostic notation
           - hex:  Hexadecimal
           - bin:  Raw binary
+
+  -o, --out <OUT>
+          The output format
+
+          [default: hex]
+
+          Possible values:
+          - diag: CBOR diagnostic notation
+          - hex:  Hexadecimal
+          - bin:  Raw binary
           - none: No output: merely succeeds on validation of input
 
-  -c, --compact
-          Output diagnostic notation or hexadecimal in compact form. Ignored for other output formats
+  -a, --annotate
+          Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
 
   -h, --help
           Print help (see a summary with '-h')
@@ -81,19 +87,44 @@ Options:
 
 ## Examples
 
-### Validate dCBOR and print it out as CBOR diagnostic notation
+### Convert CBOR diagnostic notation to hexadecimal
 
 ```
-$ dcbor 6548656C6C6F
+$ dcbor '42'
+182a
+```
+
+In diagnostic notation, text strings must be enclosed in double quotes, so you must do so on the command line, which requires escaping the double quotes:
+
+```
+$ dcbor '"Hello"'
+6548656c6c6f
+```
+
+To avoid escaping no matter the complexity of the input, you can use a "here document" (a.k.a. "heredoc"):
+
+```
+$ dcbor <<EOF
+{
+  "Hello": "World"
+}
+EOF
+a16548656c6c6f65576f726c64
+```
+
+### Validate dCBOR and print it out as annotated CBOR diagnostic notation
+
+```
+$ dcbor --in hex --out diag 6548656c6c6f
 "Hello"
 ```
 
-```
-$ CBOR_HEX=d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
-```
+Annotated diagnostic notation may include comments or other summarizations that do not round-trip to the original input:
 
 ```
-$ dcbor $CBOR_HEX
+$ CBOR_HEX=d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
+
+$ dcbor --in hex --out diag --annotate $CBOR_HEX
 40300(
    {
       1:

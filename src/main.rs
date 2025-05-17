@@ -1,8 +1,8 @@
-//! A command line tool for parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
+//! A command line tool for composing, parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
 
-use std::{ io::{ self, Read, Write, BufRead, BufReader }, ffi::OsString };
+use std::{ ffi::OsString, io::{ self, Read, Write } };
 
-use clap::{ Parser, Subcommand, Args, ValueEnum };
+use clap::{ Args, Parser, Subcommand, ValueEnum };
 use dcbor::prelude::*;
 use anyhow::Result;
 use dcbor_parse::{ compose_dcbor_array, compose_dcbor_map, parse_dcbor_item };
@@ -96,9 +96,8 @@ fn read_data<R>(reader: &mut R) -> Result<Vec<u8>> where R: Read {
 
 #[doc(hidden)]
 fn read_string<R>(reader: &mut R) -> Result<String> where R: Read {
-    let mut reader = BufReader::new(reader);
     let mut result = String::new();
-    reader.read_line(&mut result)?;
+    reader.read_to_string(&mut result)?;
     Ok(result)
 }
 
