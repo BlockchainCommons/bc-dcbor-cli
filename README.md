@@ -128,12 +128,17 @@ $ dcbor --in hex --out diag 6548656c6c6f
 "Hello"
 ```
 
-Annotated diagnostic notation may include comments or other summarizations that do not round-trip to the original input:
+Annotated diagnostic notation includes comments that describe the type of each element. The `--annotate` option adds these comments:
 
 ```
 $ CBOR_HEX=d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
 
-$ dcbor --in hex --out diag --annotate $CBOR_HEX
+$ FLAT_DIAG=`dcbor --in hex --out diag $CBOR_HEX`
+$ echo $FLAT_DIAG
+40300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})
+
+$ ANNOTATE_DIAG=`dcbor --in hex --out diag --annotate $CBOR_HEX`
+$ echo $ANNOTATE_DIAG
 40300(   / seed /
     {
         1:
@@ -148,44 +153,44 @@ $ dcbor --in hex --out diag --annotate $CBOR_HEX
 )
 ```
 
-The non-annotated version does not include commands and should round-trip to the original input:
+Either way, the output should round-trip back to the original hexadecimal form. The following example shows how to do this:
 ```
-$ CBOR_DIAG=`dcbor --in hex --out diag $CBOR_HEX`
-$ echo $CBOR_DIAG
-40300({1: h'59f2293a5bce7d4de59e71b4207ac5d2', 2: 1(1614124800), 3: "Dark Purple Aqua Love", 4: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."})
-$ CBOR_HEX_2=`dcbor $CBOR_DIAG`
+$ CBOR_HEX_2=`dcbor $FLAT_DIAG`
 $ [ "$CBOR_HEX" = "$CBOR_HEX_2" ] && echo "successful" || echo "unsuccessful"
 successful
+
+$ CBOR_HEX_3=`dcbor $ANNOTATE_DIAG`
+$ [ "$CBOR_HEX" = "$CBOR_HEX_3" ] && echo "successful" || echo "unsuccessful"
 ```
 
 ### Validate dCBOR and print it out as annotated hexadecimal
 
 ```
-$ dcbor --out hex $CBOR_HEX
-d9 9d6c                                  # tag(40300)
-   a4                                    # map(4)
-      01                                 # unsigned(1)
-      50                                 # bytes(16)
-         59f2293a5bce7d4de59e71b4207ac5d2
-      02                                 # unsigned(2)
-      c1                                 # tag(1) date
-         1a60359700                      # unsigned(1614124800)
-      03                                 # unsigned(3)
-      75                                 # text(21)
-         4461726b20507572706c652041717561204c6f7665 # "Dark Purple Aqua Love"
-      04                                 # unsigned(4)
-      78 7b                              # text(123)
-         4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e # "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+$ dcbor --in hex --out hex --annotate $CBOR_HEX
+d9 9d6c                                 # tag(40300) seed
+    a4                                  # map(4)
+        01                              # unsigned(1)
+        50                              # bytes(16)
+            59f2293a5bce7d4de59e71b4207ac5d2
+        02                              # unsigned(2)
+        c1                              # tag(1) date
+            1a60359700                  # unsigned(1614124800)
+        03                              # unsigned(3)
+        75                              # text(21)
+            4461726b20507572706c652041717561204c6f7665 # "Dark Purple Aqua Love"
+        04                              # unsigned(4)
+        78 7b                           # text(123)
+            4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e # "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 ```
 
 ### Convert dCBOR from Hexadecimal to Binary and Back
 
 ```
 # Write the binary to a file using stdout.
-$ dcbor --out bin $CBOR_HEX >test.bin
+$ dcbor --in hex --out bin $CBOR_HEX >test.bin
 
 # Read it back in from the same file.
-$ dcbor --in bin --out hex --compact <test.bin
+$ dcbor --in bin <test.bin
 d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b20507572706c652041717561204c6f766504787b4c6f72656d20697073756d20646f6c6f722073697420616d65742c20636f6e73656374657475722061646970697363696e6720656c69742c2073656420646f20656975736d6f642074656d706f7220696e6369646964756e74207574206c61626f726520657420646f6c6f7265206d61676e6120616c697175612e
 ```
 
