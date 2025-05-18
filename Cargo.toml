@@ -1,6 +1,6 @@
 [package]
 name = "dcbor-cli"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 description = "Command line parser/validator for deterministic CBOR (\"dCBOR\")."
 authors = ["Blockchain Commons"]
@@ -28,7 +28,7 @@ path = "src/main.rs"
 
 [dependencies]
 dcbor = "^0.19.1"
-dcbor-parse = "0.1.0"
+dcbor-parse = "0.1.1"
 bc-components = "0.21.0"
 
 clap = { version = "^4.0.0", features = ["derive"] }
