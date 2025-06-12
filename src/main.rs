@@ -1,11 +1,14 @@
 //! A command line tool for composing, parsing and validating Gordian dCBOR. See the main repo [README](https://github.com/BlockchainCommons/bc-dcbor-cli/blob/master/README.md).
 
-use std::{ ffi::OsString, io::{ self, Read, Write } };
+use std::{
+    ffi::OsString,
+    io::{self, Read, Write},
+};
 
-use clap::{ Args, Parser, Subcommand, ValueEnum };
-use dcbor::prelude::*;
 use anyhow::Result;
-use dcbor_parse::{ compose_dcbor_array, compose_dcbor_map, parse_dcbor_item };
+use clap::{Args, Parser, Subcommand, ValueEnum};
+use dcbor::prelude::*;
+use dcbor_parse::{compose_dcbor_array, compose_dcbor_map, parse_dcbor_item};
 
 #[derive(Args)]
 struct SharedOpts {
@@ -13,7 +16,8 @@ struct SharedOpts {
     #[arg(short, long, value_enum, default_value_t = OutputFormat::Hex)]
     out: OutputFormat,
 
-    /// Output diagnostic notation or hexadecimal with annotations. Ignored for other output formats
+    /// Output diagnostic notation or hexadecimal with annotations. Ignored for
+    /// other output formats
     #[arg(short, long)]
     annotate: bool,
 }
@@ -22,16 +26,16 @@ struct SharedOpts {
 enum Commands {
     /// Compose a dCBOR array from the provided elements
     Array {
-        /// Each of the elements is parsed as a dCBOR item in diagnostic notation
-        /// and added to the output dCBOR array.
+        /// Each of the elements is parsed as a dCBOR item in diagnostic
+        /// notation and added to the output dCBOR array.
         elements: Vec<String>,
         #[command(flatten)]
         shared: SharedOpts,
     },
     /// Compose a dCBOR map from the provided keys and values
     Map {
-        /// Each of the alternating keys and values is parsed as a dCBOR item in diagnostic notation
-        /// and added to the output dCBOR map.
+        /// Each of the alternating keys and values is parsed as a dCBOR item
+        /// in diagnostic notation and added to the output dCBOR map.
         kv_pairs: Vec<String>,
         #[command(flatten)]
         shared: SharedOpts,
@@ -40,7 +44,8 @@ enum Commands {
 
 #[derive(Args)]
 struct DefaultOpts {
-    /// Input dCBOR in the format specified by `--in`. If not provided here or input format is binary, input is read from STDIN
+    /// Input dCBOR in the format specified by `--in`. If not provided here or
+    /// input format is binary, input is read from STDIN
     input: Option<String>,
 
     /// The input format
@@ -88,14 +93,20 @@ enum OutputFormat {
 }
 
 #[doc(hidden)]
-fn read_data<R>(reader: &mut R) -> Result<Vec<u8>> where R: Read {
-    let mut buf = vec!();
+fn read_data<R>(reader: &mut R) -> Result<Vec<u8>>
+where
+    R: Read,
+{
+    let mut buf = vec![];
     reader.read_to_end(&mut buf)?;
     Ok(buf)
 }
 
 #[doc(hidden)]
-fn read_string<R>(reader: &mut R) -> Result<String> where R: Read {
+fn read_string<R>(reader: &mut R) -> Result<String>
+where
+    R: Read,
+{
     let mut result = String::new();
     reader.read_to_string(&mut result)?;
     Ok(result)
@@ -103,7 +114,11 @@ fn read_string<R>(reader: &mut R) -> Result<String> where R: Read {
 
 #[doc(hidden)]
 fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
-    where I: IntoIterator<Item = T>, T: Into<OsString> + Clone, R: Read, W: Write
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+    R: Read,
+    W: Write,
 {
     bc_components::register_tags();
 
@@ -116,35 +131,27 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
         match cmd {
             Commands::Array { elements, shared } => {
                 shared_opts = shared;
-                let element_refs: Vec<&str> = elements
-                    .iter()
-                    .map(|s| s.as_str())
-                    .collect();
+                let element_refs: Vec<&str> =
+                    elements.iter().map(|s| s.as_str()).collect();
                 compose_dcbor_array(&element_refs)?
             }
             Commands::Map { kv_pairs, shared } => {
                 shared_opts = shared;
-                let kv_refs: Vec<&str> = kv_pairs
-                    .iter()
-                    .map(|s| s.as_str())
-                    .collect();
+                let kv_refs: Vec<&str> =
+                    kv_pairs.iter().map(|s| s.as_str()).collect();
                 compose_dcbor_map(&kv_refs)?
             }
         }
     } else {
         match (opts.r#in, opts.input) {
-            (InputFormat::Diag, Some(diag)) => {
-                parse_dcbor_item(&diag).map_err(|e| {
-                    anyhow::anyhow!("{}", e.full_message(&diag))
-                })?
-            }
+            (InputFormat::Diag, Some(diag)) => parse_dcbor_item(&diag)
+                .map_err(|e| anyhow::anyhow!("{}", e.full_message(&diag)))?,
             (InputFormat::Diag, None) => {
                 let diag = read_string(reader)?;
-                parse_dcbor_item(&diag).map_err(|e| {
-                    anyhow::anyhow!("{}", e.full_message(&diag))
-                })?
+                parse_dcbor_item(&diag)
+                    .map_err(|e| anyhow::anyhow!("{}", e.full_message(&diag)))?
             }
-            (InputFormat::Hex, Some(hex)) => { CBOR::try_from_hex(&hex)? }
+            (InputFormat::Hex, Some(hex)) => CBOR::try_from_hex(&hex)?,
             (InputFormat::Hex, None) => {
                 let string = read_string(reader)?;
                 let hex = string.trim();
@@ -161,21 +168,20 @@ fn run<I, T, R, W>(args: I, reader: &mut R, writer: &mut W) -> Result<()>
     match shared_opts.out {
         OutputFormat::Diag => {
             if shared_opts.annotate {
-                with_tags!(|tags: &dyn TagsStoreTrait| {
-                    writer.write_all(
-                        format!(
-                            "{}\n",
-                            cbor.diagnostic_opt(true, false, false, Some(tags))
-                        ).as_bytes()
-                    )
-                })?;
+                writer.write_all(
+                    format!("{}\n", cbor.diagnostic_annotated()).as_bytes(),
+                )?;
             } else {
-                writer.write_all(format!("{}\n", cbor.diagnostic_flat()).as_bytes())?;
+                writer.write_all(
+                    format!("{}\n", cbor.diagnostic_flat()).as_bytes(),
+                )?;
             }
         }
         OutputFormat::Hex => {
             if shared_opts.annotate {
-                writer.write_all(format!("{}\n", cbor.hex_annotated()).as_bytes())?;
+                writer.write_all(
+                    format!("{}\n", cbor.hex_annotated()).as_bytes(),
+                )?;
             } else {
                 writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
             }
@@ -197,8 +203,10 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod test {
     use std::io::Cursor;
-    use crate::run;
+
     use indoc::indoc;
+
+    use crate::run;
 
     fn run_expect(options: &[&str], input: &str, expect: &str) {
         let mut all_args = vec!["dcbor"];
@@ -213,7 +221,10 @@ mod test {
         let raw_output_string = String::from_utf8(output).unwrap();
         let output_string = raw_output_string.trim();
         if expect != output_string {
-            println!("=== Expected ===\n{}\n\n=== Got ===\n{}", expect, output_string);
+            println!(
+                "=== Expected ===\n{}\n\n=== Got ===\n{}",
+                expect, output_string
+            );
         }
         assert_eq!(expect, output_string);
     }
