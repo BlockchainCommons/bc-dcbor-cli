@@ -20,11 +20,11 @@ pub struct CommandArgs {
     input: Option<String>,
 
     /// Input format.
-    #[arg(long, value_enum, default_value = "diag")]
+    #[arg(short, long, value_enum, default_value = "diag")]
     r#in: InputFormat,
 
     /// Output format.
-    #[arg(long, value_enum, default_value = "paths")]
+    #[arg(short, long, value_enum, default_value = "paths")]
     out: MatchOutputFormat,
 
     /// Disable indentation of path elements.
