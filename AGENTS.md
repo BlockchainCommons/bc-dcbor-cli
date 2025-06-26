@@ -94,7 +94,176 @@ This section outlines the plan to integrate `dcbor-pattern` functionality into `
     dcbor-pattern = "^0.1.0"
     ```
 
-#### Phase 2: Match Command Implementation
+#### Phase 2: Testing Architecture Deployment
+
+**Objective**: Deploy the comprehensive testing architecture on existing dcbor-cli functionality
+
+**Tasks**:
+1. **Create the testing infrastructure**:
+   - Create `tests/` directory structure
+   - Implement `tests/common/mod.rs` with testing utilities
+   - Add testing dependencies to `Cargo.toml`
+
+2. **Implement common testing utilities** (`tests/common/mod.rs`):
+   ```rust
+   use anyhow::{Result, bail};
+   use assert_cmd::Command;
+
+   pub fn run_cli_raw_stdin(args: &[&str], stdin: &str) -> Result<String> {
+       let output = Command::cargo_bin("dcbor")
+           .unwrap()
+           .args(args)
+           .write_stdin(stdin)
+           .assert();
+
+       if output.get_output().status.success() {
+           Ok(String::from_utf8(output.get_output().stdout.to_vec()).unwrap())
+       } else {
+           bail!(
+               "Command failed: {:?}",
+               String::from_utf8(output.get_output().stderr.to_vec()).unwrap()
+           );
+       }
+   }
+
+   pub fn run_cli(args: &[&str]) -> Result<String> {
+       run_cli_raw_stdin(args, "").map(|s| s.trim().to_string())
+   }
+
+   pub fn run_cli_expect(args: &[&str], expected: &str) -> Result<()> {
+       let output = run_cli(args)?;
+       if output != expected.trim() {
+           bail!(
+               "\n\n=== Expected ===\n{}\n\n=== Got ===\n{}",
+               expected, output
+           );
+       }
+       assert_eq!(expected.trim(), output);
+       Ok(())
+   }
+   ```
+
+3. **Create comprehensive tests for existing functionality**:
+
+   **`tests/test_default.rs`** - Test default parsing/validation behavior:
+   ```rust
+   #[test]
+   fn test_default_diag_to_hex() -> Result<()> {
+       run_cli_expect(&["42"], "182a")?;
+       run_cli_expect(&[r#""Hello""#], "6548656c6c6f")?;
+       run_cli_expect(&["true"], "f5")?;
+       Ok(())
+   }
+
+   #[test]
+   fn test_default_hex_to_diag() -> Result<()> {
+       run_cli_expect(&["--in", "hex", "--out", "diag", "182a"], "42")?;
+       run_cli_expect(&["--in", "hex", "--out", "diag", "6548656c6c6f"], r#""Hello""#)?;
+       Ok(())
+   }
+
+   #[test]
+   fn test_annotations() -> Result<()> {
+       run_cli_expect(
+           &["--out", "hex", "--annotate", "42"],
+           "18 2a                           # unsigned(42)"
+       )?;
+       Ok(())
+   }
+   ```
+
+   **`tests/test_array.rs`** - Test array composition:
+   ```rust
+   #[test]
+   fn test_array_basic() -> Result<()> {
+       run_cli_expect(
+           &["array", "--out", "diag", "1", "2", "3"],
+           "[1, 2, 3]"
+       )?;
+       Ok(())
+   }
+
+   #[test]
+   fn test_array_mixed_types() -> Result<()> {
+       run_cli_expect(
+           &["array", "--out", "diag", "42", r#""hello""#, "true"],
+           r#"[42, "hello", true]"#
+       )?;
+       Ok(())
+   }
+
+   #[test]
+   fn test_array_hex_output() -> Result<()> {
+       run_cli_expect(
+           &["array", "--out", "hex", "1", "2", "3"],
+           "83010203"
+       )?;
+       Ok(())
+   }
+   ```
+
+   **`tests/test_map.rs`** - Test map composition:
+   ```rust
+   #[test]
+   fn test_map_basic() -> Result<()> {
+       run_cli_expect(
+           &["map", "--out", "diag", "1", "2", "3", "4"],
+           "{1: 2, 3: 4}"
+       )?;
+       Ok(())
+   }
+
+   #[test]
+   fn test_map_text_keys() -> Result<()> {
+       run_cli_expect(
+           &["map", "--out", "diag", r#""key1""#, r#""value1""#, r#""key2""#, r#""value2""#],
+           r#"{"key1": "value1", "key2": "value2"}"#
+       )?;
+       Ok(())
+   }
+   ```
+
+4. **Test complex scenarios and edge cases**:
+   - Large dCBOR structures
+   - Nested arrays and maps
+   - Various input/output format combinations
+   - Error conditions and invalid input
+   - Stdin vs command line argument handling
+
+5. **Validate round-trip testing**:
+   ```rust
+   #[test]
+   fn test_round_trip_conversions() -> Result<()> {
+       let test_cases = [
+           ("42", "182a"),
+           (r#""Hello""#, "6548656c6c6f"),
+           ("[1, 2, 3]", "83010203"),
+           ("{1: 2}", "a10102"),
+       ];
+
+       for (diag, hex) in test_cases {
+           // diag -> hex
+           run_cli_expect(&[diag], hex)?;
+           // hex -> diag
+           run_cli_expect(&["--in", "hex", "--out", "diag", hex], diag)?;
+       }
+       Ok(())
+   }
+   ```
+
+6. **Performance and regression testing**:
+   - Baseline performance measurements
+   - Memory usage validation
+   - Large file processing tests
+
+**Benefits of this phase**:
+- Establishes robust testing foundation before new features
+- Validates existing functionality works correctly
+- Provides testing patterns for the match command implementation
+- Ensures no regressions during refactoring
+- Creates comprehensive test coverage baseline
+
+#### Phase 3: Match Command Implementation
 
 **Objective**: Implement the core `match` subcommand functionality
 
@@ -128,7 +297,7 @@ This section outlines the plan to integrate `dcbor-pattern` functionality into `
     - Execute matching using `pattern.paths_with_captures()`
     - Format output using `dcbor_pattern::format_paths_with_captures()`
 
-#### Phase 3: Output Formatting
+#### Phase 4: Output Formatting
 
 **Objective**: Implement comprehensive output formatting options
 
@@ -150,40 +319,15 @@ This section outlines the plan to integrate `dcbor-pattern` functionality into `
     - Helpful context for parsing failures
     - Position indicators for syntax errors
 
-#### Phase 4: Comprehensive Testing Architecture
+#### Phase 5: Match Command Testing
 
-**Objective**: Implement sophisticated testing infrastructure following bc-envelope-cli patterns
+**Objective**: Implement comprehensive testing for the new match command functionality
 
 **Tasks**:
 
-1. **Create `tests/` directory structure** (following bc-envelope-cli pattern):
-    ```
-    tests/
-    ├── common/
-    │   └── mod.rs           # Common testing utilities and helpers
-    ├── test_default.rs      # Tests for default dcbor validation/conversion
-    ├── test_array.rs        # Tests for array composition
-    ├── test_map.rs          # Tests for map composition
-    └── test_match.rs        # Tests for the new match command
-    ```
+1. **Create `tests/test_match.rs`** - Comprehensive match command tests:
 
-2. **Implement common testing utilities** (`tests/common/mod.rs`):
-    - `run_cli(args: &[&str])` - Execute dcbor command with arguments
-    - `run_cli_stdin(args: &[&str], stdin: &str)` - Execute with stdin input
-    - `run_cli_expect(args: &[&str], expected: &str)` - Execute and verify output
-    - `run_cli_piped(cmds: &[&[&str]])` - Chain multiple commands via pipes
-    - Error handling and clear diff output for test failures
-    - Common test data constants for reuse across tests
-
-3. **Dependencies for testing**:
-    ```toml
-    [dev-dependencies]
-    assert_cmd = "^2.0.12"  # Command execution and assertion
-    indoc = "^2.0.0"        # Multi-line string literals
-    anyhow = "^1.0.0"       # Error handling in tests
-    ```
-
-4. **Test categories for match command**:
+2. **Test categories for match command**:
 
     **Basic Pattern Matching Tests**:
     ```rust
@@ -344,32 +488,16 @@ This section outlines the plan to integrate `dcbor-pattern` functionality into `
     }
     ```
 
-6. **Backward compatibility tests**:
-    - Ensure all existing dcbor-cli functionality continues to work
-    - Test existing array/map commands remain unchanged
-    - Verify default behavior is preserved
-
 7. **Performance and edge case tests**:
     - Large dCBOR structures
     - Complex nested patterns
     - Memory usage validation
     - Pattern compilation performance
 
-**Testing Utilities Architecture**:
-
-The testing utilities will follow the bc-envelope-cli pattern with these key features:
-
-- **Clear error reporting**: Tests show expected vs actual output with proper formatting
-- **Pipeline support**: Chain multiple commands to test complex workflows
-- **stdin/stdout handling**: Proper handling of command input/output streams
-- **Consistent formatting**: Use `indoc!` for multi-line expected outputs. Use #[rustfmt::skip] to maintain formatting in tests.
-- **Reusable test data**: Common dCBOR structures for consistent testing
-
-**Continuous Integration**:
-- All tests must pass before merging
-- Test coverage reporting
-- Performance regression detection
-- Documentation example validation
+8. **Integration with existing test suite**:
+    - Ensure match command tests integrate with existing test infrastructure
+    - Validate backward compatibility with existing functionality
+    - Test command chaining and pipeline integration with match command
 
 ### Implementation Details
 
