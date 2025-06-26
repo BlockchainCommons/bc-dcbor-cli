@@ -34,6 +34,9 @@ dcbor-pattern = "^0.1.0"
 
 clap = { version = "^4.0.0", features = ["derive"] }
 anyhow = "^1.0.0"
+hex = "^0.4.0"
 
 [dev-dependencies]
 indoc = "^2.0.0"
+assert_cmd = "^2.0.0"
+anyhow = "^1.0.0"

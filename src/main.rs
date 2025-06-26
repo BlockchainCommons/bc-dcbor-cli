@@ -6,54 +6,18 @@ use std::{
 };
 
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use dcbor::prelude::*;
-use dcbor_parse::{compose_dcbor_array, compose_dcbor_map, parse_dcbor_item};
 
-#[derive(Args)]
-struct SharedOpts {
-    /// The output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Hex)]
-    out: OutputFormat,
-
-    /// Output diagnostic notation or hexadecimal with annotations. Ignored for
-    /// other output formats
-    #[arg(short, long)]
-    annotate: bool,
-}
+mod cmd;
+use cmd::Exec;
 
 #[derive(Subcommand)]
 enum Commands {
     /// Compose a dCBOR array from the provided elements
-    Array {
-        /// Each of the elements is parsed as a dCBOR item in diagnostic
-        /// notation and added to the output dCBOR array.
-        elements: Vec<String>,
-        #[command(flatten)]
-        shared: SharedOpts,
-    },
+    Array(cmd::array::CommandArgs),
     /// Compose a dCBOR map from the provided keys and values
-    Map {
-        /// Each of the alternating keys and values is parsed as a dCBOR item
-        /// in diagnostic notation and added to the output dCBOR map.
-        kv_pairs: Vec<String>,
-        #[command(flatten)]
-        shared: SharedOpts,
-    },
-}
-
-#[derive(Args)]
-struct DefaultOpts {
-    /// Input dCBOR in the format specified by `--in`. If not provided here or
-    /// input format is binary, input is read from STDIN
-    input: Option<String>,
-
-    /// The input format
-    #[arg(short, long, value_enum, default_value_t = InputFormat::Diag)]
-    r#in: InputFormat,
-
-    #[command(flatten)]
-    shared: SharedOpts,
+    Map(cmd::map::CommandArgs),
 }
 
 #[derive(Parser)]
@@ -65,10 +29,10 @@ struct Cli {
     command: Option<Commands>,
 
     #[command(flatten)]
-    opts: DefaultOpts,
+    default_args: cmd::default::CommandArgs,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[doc(hidden)]
 enum InputFormat {
     /// CBOR diagnostic notation
@@ -79,7 +43,7 @@ enum InputFormat {
     Bin,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[doc(hidden)]
 enum OutputFormat {
     /// CBOR diagnostic notation
@@ -90,6 +54,32 @@ enum OutputFormat {
     Bin,
     /// No output: merely succeeds on validation of input
     None,
+}
+
+#[doc(hidden)]
+fn format_output(cbor: &CBOR, out_format: OutputFormat, annotate: bool) -> Result<String> {
+    match out_format {
+        OutputFormat::Diag => {
+            if annotate {
+                Ok(cbor.diagnostic_annotated())
+            } else {
+                Ok(cbor.diagnostic_flat())
+            }
+        }
+        OutputFormat::Hex => {
+            if annotate {
+                Ok(cbor.hex_annotated())
+            } else {
+                Ok(cbor.hex())
+            }
+        }
+        OutputFormat::Bin => {
+            // For binary output, we'll return the hex representation
+            // and let the caller handle writing binary data
+            Ok(hex::encode(cbor.to_cbor_data()))
+        }
+        OutputFormat::None => Ok(String::new()),
+    }
 }
 
 #[doc(hidden)]
@@ -123,73 +113,22 @@ where
     bc_components::register_tags();
 
     let cli = Cli::parse_from(args);
-    let opts = cli.opts;
-    // use subcommand-specific shared options if provided, otherwise global ones
-    let mut shared_opts = opts.shared;
 
-    let cbor: CBOR = if let Some(cmd) = cli.command {
-        match cmd {
-            Commands::Array { elements, shared } => {
-                shared_opts = shared;
-                let element_refs: Vec<&str> =
-                    elements.iter().map(|s| s.as_str()).collect();
-                compose_dcbor_array(&element_refs)?
-            }
-            Commands::Map { kv_pairs, shared } => {
-                shared_opts = shared;
-                let kv_refs: Vec<&str> =
-                    kv_pairs.iter().map(|s| s.as_str()).collect();
-                compose_dcbor_map(&kv_refs)?
-            }
+    let output = if let Some(command) = cli.command {
+        match command {
+            Commands::Array(args) => args.exec()?,
+            Commands::Map(args) => args.exec()?,
         }
     } else {
-        match (opts.r#in, opts.input) {
-            (InputFormat::Diag, Some(diag)) => parse_dcbor_item(&diag)
-                .map_err(|e| anyhow::anyhow!("{}", e.full_message(&diag)))?,
-            (InputFormat::Diag, None) => {
-                let diag = read_string(reader)?;
-                parse_dcbor_item(&diag)
-                    .map_err(|e| anyhow::anyhow!("{}", e.full_message(&diag)))?
-            }
-            (InputFormat::Hex, Some(hex)) => CBOR::try_from_hex(&hex)?,
-            (InputFormat::Hex, None) => {
-                let string = read_string(reader)?;
-                let hex = string.trim();
-                CBOR::try_from_hex(hex)?
-            }
-            (InputFormat::Bin, _) => {
-                let data = read_data(reader)?;
-                CBOR::try_from_data(data)?
-            }
-        }
+        cli.default_args.exec_with_reader(reader)?
     };
 
-    // format output using the effective shared options
-    match shared_opts.out {
-        OutputFormat::Diag => {
-            if shared_opts.annotate {
-                writer.write_all(
-                    format!("{}\n", cbor.diagnostic_annotated()).as_bytes(),
-                )?;
-            } else {
-                writer.write_all(
-                    format!("{}\n", cbor.diagnostic_flat()).as_bytes(),
-                )?;
-            }
-        }
-        OutputFormat::Hex => {
-            if shared_opts.annotate {
-                writer.write_all(
-                    format!("{}\n", cbor.hex_annotated()).as_bytes(),
-                )?;
-            } else {
-                writer.write_all(format!("{}\n", cbor.hex()).as_bytes())?;
-            }
-        }
-        OutputFormat::Bin => {
-            writer.write_all(&cbor.to_cbor_data())?;
-        }
-        OutputFormat::None => {}
+    if cli.default_args.out == OutputFormat::Bin {
+        // For binary output, decode hex back to bytes
+        let data = hex::decode(&output)?;
+        writer.write_all(&data)?;
+    } else if !output.is_empty() {
+        writer.write_all(format!("{}\n", output).as_bytes())?;
     }
 
     Ok(())
