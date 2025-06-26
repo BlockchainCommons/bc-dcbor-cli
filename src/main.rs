@@ -18,6 +18,8 @@ enum Commands {
     Array(cmd::array::CommandArgs),
     /// Compose a dCBOR map from the provided keys and values
     Map(cmd::map::CommandArgs),
+    /// Match dCBOR data against a pattern
+    Match(cmd::r#match::CommandArgs),
 }
 
 #[derive(Parser)]
@@ -118,6 +120,7 @@ where
         match command {
             Commands::Array(args) => args.exec()?,
             Commands::Map(args) => args.exec()?,
+            Commands::Match(args) => args.exec()?,
         }
     } else {
         cli.default_args.exec_with_reader(reader)?
