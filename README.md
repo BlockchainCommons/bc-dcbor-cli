@@ -198,6 +198,15 @@ d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b2050757270
 
 `dcbor`  is currently under active development and in the alpha testing phase. It should not be used for production tasks until it has had further testing and auditing. See [Blockchain Commons' Development Phases](https://github.com/BlockchainCommons/Community/blob/master/release-path.md).
 
+## Version History
+
+**0.8.0** - July 3, 2025
+- Add pattern matching functionality with dcbor-pattern integration
+- Add new match command for pattern-based CBOR data querying
+- Restructure CLI with dedicated subcommands (array, default, map, match)
+- Update dependencies (bc-components, dcbor, dcbor-parse)
+- Add comprehensive test suite for new functionality
+
 ## Financial Support
 
 `dcbor` is a project of [Blockchain Commons](https://www.blockchaincommons.com/). We are proudly a "not-for-profit" social benefit corporation committed to open source & open development. Our work is funded entirely by donations and collaborative partnerships with people like you. Every contribution will be spent on building open tools, technologies, and techniques that sustain and advance blockchain and internet security infrastructure and promote an open web.
