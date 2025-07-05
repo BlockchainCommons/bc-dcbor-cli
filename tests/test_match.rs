@@ -293,10 +293,10 @@ fn test_match_binary_input_output() -> Result<()> {
 #[test]
 fn test_match_edge_cases() -> Result<()> {
     // Test empty array
-    run_cli_expect(&["match", "[*]", "[]"], "[]")?;
+    run_cli_expect(&["match", "array", "[]"], "[]")?;
 
     // Test empty map
-    run_cli_expect(&["match", "{*}", "{}"], "{}")?;
+    run_cli_expect(&["match", "map", "{}"], "{}")?;
 
     // Test null value
     run_cli_expect(&["match", "null", "null"], "null")?;
