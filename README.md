@@ -200,6 +200,9 @@ d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b2050757270
 
 ## Version History
 
+**0.10.0** - July 6, 2025
+- Align to dependencies.
+
 **0.9.0** - July 5, 2025
 - Update dcbor-pattern dependency to 0.2.0
 - Fix test patterns for array and map matching
