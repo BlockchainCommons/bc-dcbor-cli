@@ -30,7 +30,7 @@ path = "src/main.rs"
 bc-components = "0.24.0"
 dcbor = "^0.22.0"
 dcbor-parse = "^0.3.0"
-dcbor-pattern = "^0.2.0"
+dcbor-pattern = "^0.3.0"
 
 clap = { version = "^4.0.0", features = ["derive"] }
 anyhow = "^1.0.0"
