@@ -59,7 +59,11 @@ enum OutputFormat {
 }
 
 #[doc(hidden)]
-fn format_output(cbor: &CBOR, out_format: OutputFormat, annotate: bool) -> Result<String> {
+fn format_output(
+    cbor: &CBOR,
+    out_format: OutputFormat,
+    annotate: bool,
+) -> Result<String> {
     match out_format {
         OutputFormat::Diag => {
             if annotate {

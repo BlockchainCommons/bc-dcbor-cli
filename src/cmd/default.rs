@@ -1,8 +1,9 @@
+use std::io::Read;
+
 use anyhow::Result;
 use clap::Args;
 use dcbor::prelude::*;
 use dcbor_parse::parse_dcbor_item;
-use std::io::Read;
 
 use crate::{InputFormat, OutputFormat, format_output, read_data, read_string};
 

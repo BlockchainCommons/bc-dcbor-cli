@@ -24,7 +24,8 @@ pub struct CommandArgs {
 
 impl super::Exec for CommandArgs {
     fn exec(&self) -> Result<String> {
-        let kv_refs: Vec<&str> = self.kv_pairs.iter().map(|s| s.as_str()).collect();
+        let kv_refs: Vec<&str> =
+            self.kv_pairs.iter().map(|s| s.as_str()).collect();
         let cbor = compose_dcbor_map(&kv_refs)?;
         format_output(&cbor, self.out, self.annotate)
     }

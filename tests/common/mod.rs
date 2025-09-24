@@ -27,7 +27,8 @@ pub fn run_cli_expect(args: &[&str], expected: &str) -> Result<()> {
     if output != expected.trim() {
         bail!(
             "\n\n=== Expected ===\n{}\n\n=== Got ===\n{}",
-            expected, output
+            expected,
+            output
         );
     }
     assert_eq!(expected.trim(), output);

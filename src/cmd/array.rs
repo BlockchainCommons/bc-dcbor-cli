@@ -24,7 +24,8 @@ pub struct CommandArgs {
 
 impl super::Exec for CommandArgs {
     fn exec(&self) -> Result<String> {
-        let element_refs: Vec<&str> = self.elements.iter().map(|s| s.as_str()).collect();
+        let element_refs: Vec<&str> =
+            self.elements.iter().map(|s| s.as_str()).collect();
         let cbor = compose_dcbor_array(&element_refs)?;
         format_output(&cbor, self.out, self.annotate)
     }
