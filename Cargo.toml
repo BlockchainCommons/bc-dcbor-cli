@@ -1,6 +1,6 @@
 [package]
 name = "dcbor-cli"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2024"
 description = "Command line parser/validator for deterministic CBOR (\"dCBOR\")."
 authors = ["Blockchain Commons"]
