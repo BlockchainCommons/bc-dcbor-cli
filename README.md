@@ -200,6 +200,9 @@ d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b2050757270
 
 ## Version History
 
+**0.15.0** - December 4, 2025
+- Align to dependencies.
+
 **0.14.0** - November 12, 2025
 - Align to dependencies.
 
