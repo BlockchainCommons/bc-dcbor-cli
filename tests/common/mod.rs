@@ -1,9 +1,7 @@
 use anyhow::{Result, bail};
-use assert_cmd::Command;
 
 pub fn run_cli_raw_stdin(args: &[&str], stdin: &str) -> Result<String> {
-    let output = Command::cargo_bin("dcbor")
-        .unwrap()
+    let output = assert_cmd::cargo::cargo_bin_cmd!("dcbor")
         .args(args)
         .write_stdin(stdin)
         .assert();
