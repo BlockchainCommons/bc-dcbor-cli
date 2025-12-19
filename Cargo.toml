@@ -27,10 +27,10 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bc-components = "0.30.0"
-dcbor = "^0.24.1"
-dcbor-parse = "^0.8.0"
-dcbor-pattern = "^0.8.0"
+bc-components = "0.31.0"
+dcbor = "^0.25.0"
+dcbor-parse = "^0.10.0"
+dcbor-pattern = "^0.10.0"
 
 clap = { version = "^4.0.0", features = ["derive"] }
 anyhow = "^1.0.0"
