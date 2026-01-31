@@ -176,6 +176,7 @@ mod test {
     }
 
     #[test]
+    // expected-text-output-rubric:
     #[rustfmt::skip]
     fn test_parse() {
         let diag_to_hex: &[&str] = &["--"]; // Signal end of options so `-Infinity` below is not treated as an option
