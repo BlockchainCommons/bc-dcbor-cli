@@ -200,6 +200,9 @@ d99d6ca4015059f2293a5bce7d4de59e71b4207ac5d202c11a6035970003754461726b2050757270
 
 ## Version History
 
+**0.17.1** - January 31, 2026
+- Add `expected-text-output-rubric` annotation comment to `test_parse` test.
+
 **0.17.0** - January 11, 2026
 - Align to dependencies.
 
